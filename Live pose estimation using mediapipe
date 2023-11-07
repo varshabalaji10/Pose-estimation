@@ -1,0 +1,58 @@
+import cv2
+import mediapipe as mp
+import time
+
+from mediapipe.python.solutions import holistic
+
+mp_drawing = mp.solutions.drawing_utils
+mp_pose = mp.solutions.pose
+#mp_pose1=mp.holistic.pose
+ptime=0
+lmlist=[]
+
+cap = cv2.VideoCapture(0)
+with mp_pose.Pose(
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5) as pose:
+    while cap.isOpened():
+        success, image = cap.read()
+        if not success:
+            print("Ignoring empty camera frame.")
+            # If loading a video, use 'break' instead of 'continue'.
+            continue
+
+        # Flip the image horizontally for a later selfie-view display, and convert
+        # the BGR image to RGB.
+        image = cv2.cvtColor(cv2.flip(image, 1), cv2.COLOR_BGR2RGB)
+        # To improve performance, optionally mark the image as not writeable to
+        # pass by reference.
+        image.flags.writeable = False
+        results = pose.process(image)
+        #reuslts1= holistic.process(image)
+        # Draw the pose annotation on the image.
+        image.flags.writeable = True
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        if results.pose_landmarks:
+            #mp_drawing.draw_landmarks(image,reuslts1.right_hand_landmark,mp_pose1.HAND_CONNECTON)
+            #mp_drawing.draw_landmarks(image,reuslts1.left_hand_landmark,mp_pose1.HAND_CONNECTON)
+            mp_drawing.draw_landmarks(
+            image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+            for id, lm in enumerate(results.pose_landmarks.landmark):
+                h,w,c=image.shape
+                print(id,lm) #to check the visibility
+                cx,cy = int(lm.x*w),int( lm.y*h)
+                #lmlist.append([id, cx, cy]) #coordinates
+
+                #draw circles
+                cv2.circle(image,(cx,cy),5,(255,0,0),cv2.FILLED)
+        ctime=time.time()
+        fps= 1/(ctime-ptime)
+        ptime=ctime
+        cv2.putText(image,str(int(fps)),(70,50),cv2.FONT_HERSHEY_PLAIN,3,(255,0,0),3)
+        #cv2.imshow("Image",img)
+        cv2.waitKey(1)
+        cv2.imshow('MediaPipe Pose', image)
+        if cv2.waitKey(5) & 0xFF == 27:
+            break
+        print(lmlist)
+cap.release()
