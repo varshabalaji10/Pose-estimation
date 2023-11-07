@@ -1,0 +1,114 @@
+import cv2
+import numpy as np
+import matplotlib as plt
+import mediapipe as mp_pose
+from mediapipe import solutions as s
+import poseestimationmin.posemodule as pe
+from mediapipe import solutions
+mp_pose=mp_pose.solutions.pose
+pose_estimator = []
+pose_estimator_dim = []
+mpDraw= s.drawing_utils
+mpPose=s.pose
+pose=mpPose.Pose()
+k=0
+yolo= cv2.dnn.readNet(r'C:\Users\bvars\IdeaProjects\poseestimationproject\configuration\yolov3.weights',r'C:\Users\bvars\IdeaProjects\poseestimationproject\configuration\yolov3.cfg')
+classes =[]
+lmlists1=[]
+lmlists2=[]
+with open(r"C:\Users\bvars\IdeaProjects\poseestimationproject\configuration\coco.names",'r')as f:
+    classes = [line.strip() for line in f.readlines()]
+
+layer_names= yolo.getLayerNames()
+output_layers= [layer_names[i[0] - 1] for i in yolo.getUnconnectedOutLayers()]
+cap=cv2.VideoCapture(r"C:\Users\bvars\IdeaProjects\poseestimationproject\videos\multi.mkv")
+#img = cv2.imread(r"C:\Users\bvars\IdeaProjects\poseestimationproject\videos\Capture.png")
+detector = pe.posedetector()
+
+
+
+
+while True:
+    _,img=cap.read()
+    #cv2.imshow('image',img)
+    height, width,_ = img.shape
+    colors = np.random.uniform(0, 255, size=(len(classes), 3))
+    blob= cv2.dnn.blobFromImage(img,0.00392,(416,416),(0,0,0),swapRB=True,crop=False)
+    yolo.setInput(blob)
+    layeroutput = yolo.forward(output_layers)
+
+
+    boxes= []
+    confidences=[]
+    class_ids=[]
+
+    for output in layeroutput:
+        for detection in output:
+            scores=detection[5:]
+            class_id=np.argmax(scores)
+            confidence=scores[class_id]
+            if confidence>0.5:
+                center_x=int(detection[0]*width)
+                center_y=int(detection[1]*height)
+                w=int(detection[2]*width)
+                h=int(detection[3]*height)
+
+                x= int(center_x-w/2)
+                y=int(center_y-h/2)
+
+                boxes.append([x,y,w,h])
+                confidences.append(float(confidence))
+                class_ids.append(class_id)
+    #print((boxes))
+    indexes = cv2.dnn.NMSBoxes(boxes,confidences,0.5,0.4)
+    idx=indexes.flatten()
+
+    #a="person"
+    #for a in classes:
+        #detector.findpose(img)
+
+    font = cv2.FONT_HERSHEY_PLAIN
+    if len(indexes)>0:
+        img1=detector.findpose(img)
+        lmlists1=detector.getposition(img1,draw=False)
+
+        for i in idx:
+            (x, y)=(boxes[i][0],boxes[i][1])
+            (w,h)=(boxes[i][2],boxes[i][3])
+            label = str(classes[class_ids[i]])
+        #detector.findpose(img)
+
+            #lmlists.append([x,y])
+
+
+        #detector.findpose(img)
+            color = colors[i]
+            cv2.rectangle(img, (x, y), (x + w, y + h), color, 2)
+            cv2.putText(img, label, (x, y + 30), font, 3, color, 3)
+            imgRGB=cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    results =pose.process(imgRGB) #detection of pose
+    #print(results.pose_landmarks)
+    if results.pose_landmarks:
+        mpDraw.draw_landmarks(img, results.pose_landmarks,mpPose.POSE_CONNECTIONS)
+        #extracting
+        for id, lm in enumerate(results.pose_landmarks.landmark):
+            h,w,c=img.shape
+            #print(id,lm)
+            cx,cy = int(lm.x*w),int( lm.y*h)
+            lmlists2.append([id, cx, cy])
+            #draw circles
+            cv2.circle(img,(cx,cy),3,(255,0,0),cv2.FILLED)
+    print("pose1:",lmlists1)
+    print("pose2:",lmlists2)
+
+    cv2.imshow("Image", img)
+    key=cv2.waitKey(10)
+    if key==27:
+        break
+
+cap.release()
+cv2.destroyAllWindows()
+
+
+
