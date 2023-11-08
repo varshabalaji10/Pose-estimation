@@ -1,3 +1,4 @@
+
 # Pose Estimation 
 # Live and Multiple Pose Estimation
 
@@ -60,4 +61,5 @@ Please refer to the respective code sections and libraries for detailed document
 
 ### Author
 Varsha Balaji
+
 Feel free to reach out for any questions or further assistance.
